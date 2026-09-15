@@ -73,8 +73,6 @@ enum AppConstants {
         "t.co",
         "www.instagram.com",
         "instagram.com",
-        "www.youtube.com",
-        "youtube.com",
         "www.reddit.com",
         "reddit.com",
     ]

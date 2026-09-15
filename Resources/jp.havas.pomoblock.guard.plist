@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>jp.havas.pomoblock.guard</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/sh</string>
+        <string>/usr/local/libexec/pomoblock-guard.sh</string>
+    </array>
+
+    <!-- 起動直後に一度実行し、状態ファイルの変化を検知して即座に反映する -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WatchPaths</key>
+    <array>
+        <string>/Library/Application Support/Pomoblock/desired.conf</string>
+        <string>/Library/Application Support/Pomoblock/lock.conf</string>
+    </array>
+
+    <!-- hosts を手で書き換えられた場合の復旧と、ロック期限切れの検知を兼ねる -->
+    <key>StartInterval</key>
+    <integer>15</integer>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/pomoblock-guard.log</string>
+</dict>
+</plist>

@@ -94,8 +94,25 @@ final class BlockController {
             // launchd の WatchPaths を確実に発火させるため、inode を保つ非アトミック書き込みにする
             try body.write(toFile: AppConstants.desiredStatePath, atomically: false, encoding: .utf8)
             isBlocking = blocked
+            if blocked {
+                refreshOpenTabsAfterGuardApplies(domains: domains)
+            }
         } catch {
             lastError = "ブロック状態の書き込みに失敗しました: \(error.localizedDescription)"
+        }
+    }
+
+    /// 開いたままのタブへ遮断を波及させる。
+    ///
+    /// hosts を書き換えても読み込み済みのページは動き続けるため、
+    /// ガードが反映を終えるのを待ってから対象タブを再読み込みする。
+    private func refreshOpenTabsAfterGuardApplies(domains: [String]) {
+        Task {
+            try? await Task.sleep(for: .seconds(AppConstants.tabRefreshDelaySeconds))
+            // AppleScript の往復で UI を止めないよう、メインアクターの外で実行する
+            await Task.detached(priority: .utility) {
+                BrowserTabRefresher.refreshTabs(matching: domains)
+            }.value
         }
     }
 
@@ -123,6 +140,7 @@ final class BlockController {
         """
 
         run(script, onSuccess: "ロックを設定しました。")
+        refreshOpenTabsAfterGuardApplies(domains: domains)
     }
 
     // MARK: - 常駐ガードの導入と撤去

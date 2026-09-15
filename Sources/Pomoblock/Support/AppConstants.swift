@@ -32,6 +32,10 @@ enum AppConstants {
     /// 残り時間表示を更新する間隔（秒）
     static let tickInterval: TimeInterval = 1.0
 
+    /// ブロック開始からタブを再読み込みするまでの待ち時間（秒）。
+    /// ガードが hosts へ反映し終える猶予を取る。
+    static let tabRefreshDelaySeconds = 2.0
+
     // MARK: - Locked Mode
 
     /// ロック時間の選択肢（分）

@@ -27,28 +27,43 @@ final class AppModel {
         }
 
         requestNotificationPermission()
+
+        // 前回終了時の状態ファイルが残っている場合に備え、起動時にポリシーを合わせ直す。
+        // これをしないと、作業フェーズ中に終了したブロックが解除できないまま残る。
+        applyBlockingPolicy()
     }
 
     // MARK: - フェーズ変化への追従
 
     /// フェーズが変わったらブロック状態を合わせ、ユーザーへ知らせる。
     private func handlePhaseChange(_ phase: PomodoroPhase) {
-        applyBlockingPolicy(for: phase)
+        applyBlockingPolicy()
         notifyPhaseChange(phase)
         if settings.playSound {
             NSSound(named: phase == .work ? "Ping" : "Glass")?.play()
         }
     }
 
-    /// 作業中だけブロックする。
-    /// ロック中はガード側が期限まで強制ブロックするため、ここでの解除要求は効かない。
-    private func applyBlockingPolicy(for phase: PomodoroPhase) {
-        blocker.setBlocking(phase.shouldBlock, domains: settings.blockedDomains)
+    /// 現在あるべきブロック状態を算出して反映する。
+    ///
+    /// 遮断する条件は次のいずれか。
+    ///   - 常時ブロックが ON
+    ///   - 作業フェーズ中
+    /// さらにロック中はガード側が期限まで強制ブロックするため、ここでの解除要求は効かない。
+    private func applyBlockingPolicy() {
+        let shouldBlock = settings.alwaysBlock || engine.phase.shouldBlock
+        blocker.setBlocking(shouldBlock, domains: settings.blockedDomains)
     }
 
-    /// 設定変更を即座に反映する。ブロック中にドメインを足した場合に使う。
+    /// 設定変更を即座に反映する。ドメインを足した場合や常時ブロックの切り替え時に使う。
     func reapplyCurrentPolicy() {
-        applyBlockingPolicy(for: engine.phase)
+        applyBlockingPolicy()
+    }
+
+    /// 常時ブロックを切り替える。
+    func toggleAlwaysBlock() {
+        settings.alwaysBlock.toggle()
+        applyBlockingPolicy()
     }
 
     // MARK: - 操作

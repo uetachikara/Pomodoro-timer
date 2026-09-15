@@ -95,6 +95,15 @@ struct MenuBarContentView: View {
                     .foregroundStyle(.secondary)
             }
 
+            // タイマーを回していない間もブロックしたい場合の手動スイッチ
+            Toggle("タイマーと無関係に常時ブロック", isOn: Binding(
+                get: { model.settings.alwaysBlock },
+                set: { _ in model.toggleAlwaysBlock() }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .font(.callout)
+
             if let remaining = model.blocker.lockRemainingText {
                 Label("ロック中・\(remaining)", systemImage: "lock.shield")
                     .font(.caption)

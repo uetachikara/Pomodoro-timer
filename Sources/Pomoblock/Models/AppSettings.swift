@@ -15,7 +15,6 @@ final class AppSettings {
         static let blockedDomains = "blockedDomains"
         static let playSound = "playSound"
         static let autoStartNextPhase = "autoStartNextPhase"
-        static let alwaysBlock = "alwaysBlock"
     }
 
     private let defaults = UserDefaults.standard
@@ -41,10 +40,6 @@ final class AppSettings {
     /// フェーズ終了時に次のフェーズを自動開始するか
     var autoStartNextPhase: Bool { didSet { defaults.set(autoStartNextPhase, forKey: Key.autoStartNextPhase) } }
 
-    /// タイマーの状態に関わらず常にブロックするか。
-    /// 「今日はもう見ない」という使い方のための手動スイッチ。
-    var alwaysBlock: Bool { didSet { defaults.set(alwaysBlock, forKey: Key.alwaysBlock) } }
-
     init() {
         // UserDefaults に値が無い場合は 0 や nil が返るため、既定値へフォールバックする
         let storedWork = defaults.integer(forKey: Key.workMinutes)
@@ -65,7 +60,6 @@ final class AppSettings {
         // Bool は未設定でも false が返るため、キーの存在で判定する
         playSound = defaults.object(forKey: Key.playSound) as? Bool ?? true
         autoStartNextPhase = defaults.object(forKey: Key.autoStartNextPhase) as? Bool ?? true
-        alwaysBlock = defaults.object(forKey: Key.alwaysBlock) as? Bool ?? false
     }
 
     /// 指定フェーズの長さを秒で返す。

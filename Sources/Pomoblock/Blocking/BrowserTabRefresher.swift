@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 /// 既に開いているタブへブロックを波及させる。
@@ -36,18 +37,71 @@ enum BrowserTabRefresher {
     private static let fieldSeparator = "\u{001F}"
     private static let recordSeparator = "\u{001E}"
 
+    /// タブ再読み込みの結果。UI への表示と原因追跡に使う。
+    struct Outcome: Sendable {
+        /// 起動していた対応ブラウザ名
+        var runningBrowsers: [String] = []
+        /// 実際に再読み込みしたタブ数
+        var reloadedTabCount = 0
+        /// AppleScript が失敗したブラウザ名。自動化の許可が無い場合にここへ入る。
+        var failedBrowsers: [String] = []
+
+        /// UI に出す一行の要約。問題が無ければ nil。
+        var warning: String? {
+            if !failedBrowsers.isEmpty {
+                return "\(failedBrowsers.joined(separator: " / ")) のタブを操作できません。システム設定 > プライバシーとセキュリティ > 自動化 で Pomoblock を許可してください。"
+            }
+            return nil
+        }
+    }
+
     /// ブロック対象ドメインのタブを再読み込みする。
     /// - Parameter domains: 遮断中のドメイン
-    static func refreshTabs(matching domains: [String]) {
-        guard !domains.isEmpty else { return }
+    /// - Returns: 実行結果
+    @discardableResult
+    static func refreshTabs(matching domains: [String]) -> Outcome {
+        var outcome = Outcome()
+        guard !domains.isEmpty else { return outcome }
         let targets = Set(domains.map { $0.lowercased() })
 
         for browser in browsers {
-            guard isRunning(browser.applicationName) else { continue }
-            let tabs = listTabs(in: browser)
+            let name = browser.applicationName
+            guard isRunning(name) else { continue }
+            outcome.runningBrowsers.append(name)
+
+            guard let tabs = listTabs(in: browser) else {
+                // AppleScript が失敗した。自動化の許可が無い場合がほとんど。
+                outcome.failedBrowsers.append(name)
+                continue
+            }
+
             let matched = tabs.filter { matches(url: $0.url, targets: targets) }
             guard !matched.isEmpty else { continue }
             reload(matched, in: browser)
+            outcome.reloadedTabCount += matched.count
+        }
+
+        log(outcome)
+        return outcome
+    }
+
+    /// 結果をログへ残す。UI に出ない失敗を後から追えるようにする。
+    private static func log(_ outcome: Outcome) {
+        let line = "[\(ISO8601DateFormatter().string(from: Date()))] "
+            + "起動中=\(outcome.runningBrowsers.joined(separator: ",")) "
+            + "再読み込み=\(outcome.reloadedTabCount) "
+            + "失敗=\(outcome.failedBrowsers.joined(separator: ","))\n"
+
+        let logURL = FileManager.default.homeDirectoryForCurrentUser
+            .appending(path: "Library/Logs/Pomoblock.log")
+        guard let data = line.data(using: .utf8) else { return }
+
+        if let handle = try? FileHandle(forWritingTo: logURL) {
+            defer { try? handle.close() }
+            try? handle.seekToEnd()
+            try? handle.write(contentsOf: data)
+        } else {
+            try? data.write(to: logURL)
         }
     }
 
@@ -61,7 +115,8 @@ enum BrowserTabRefresher {
     }
 
     /// 起動中のブラウザからタブ一覧を取得する。
-    private static func listTabs(in browser: Browser) -> [TabReference] {
+    /// AppleScript が失敗した場合は nil を返し、「タブが 0 件」と区別する。
+    private static func listTabs(in browser: Browser) -> [TabReference]? {
         let tabCollection = switch browser {
         case .chromium: "tabs"
         case .safari: "tabs"
@@ -85,7 +140,7 @@ enum BrowserTabRefresher {
         end tell
         """
 
-        guard let raw = runAppleScript(script) else { return [] }
+        guard let raw = runAppleScript(script) else { return nil }
 
         return raw.components(separatedBy: recordSeparator).compactMap { record in
             let fields = record.components(separatedBy: fieldSeparator)
@@ -132,11 +187,12 @@ enum BrowserTabRefresher {
 
     /// 指定アプリが起動中か。起動していないアプリへ AppleScript を送ると
     /// 勝手に起動してしまうため、事前に確認する。
+    ///
+    /// System Events 経由で調べると、その System Events 自体に自動化の許可が要る。
+    /// 許可が無いと黙って失敗し、全ブラウザが読み飛ばされるため、
+    /// 許可の要らない NSWorkspace で判定する。
     private static func isRunning(_ applicationName: String) -> Bool {
-        let script = """
-        tell application "System Events" to return (exists (processes where name is "\(applicationName)"))
-        """
-        return runAppleScript(script)?.trimmingCharacters(in: .whitespacesAndNewlines) == "true"
+        NSWorkspace.shared.runningApplications.contains { $0.localizedName == applicationName }
     }
 
     /// AppleScript を実行して標準出力を返す。失敗時は nil。

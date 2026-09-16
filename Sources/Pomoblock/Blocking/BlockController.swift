@@ -24,6 +24,12 @@ final class BlockController {
     /// 直近の成功メッセージ。UI に表示する。
     var lastStatus: String?
 
+    /// タブ再読み込みの警告。自動化の許可が無い場合などに入る。
+    var tabWarning: String?
+
+    /// 直近に再読み込みしたタブ数。動作確認用。
+    private(set) var lastReloadedTabCount = 0
+
     private let fileManager = FileManager.default
 
     init() {
@@ -109,11 +115,19 @@ final class BlockController {
     private func refreshOpenTabsAfterGuardApplies(domains: [String]) {
         Task {
             try? await Task.sleep(for: .seconds(AppConstants.tabRefreshDelaySeconds))
-            // AppleScript の往復で UI を止めないよう、メインアクターの外で実行する
-            await Task.detached(priority: .utility) {
-                BrowserTabRefresher.refreshTabs(matching: domains)
-            }.value
+            await refreshOpenTabsNow(domains: domains)
         }
+    }
+
+    /// 待たずに即座にタブを再読み込みする。動作確認用に UI からも呼べる。
+    func refreshOpenTabsNow(domains: [String]) async {
+        // AppleScript の往復で UI を止めないよう、メインアクターの外で実行する
+        let outcome = await Task.detached(priority: .utility) {
+            BrowserTabRefresher.refreshTabs(matching: domains)
+        }.value
+
+        lastReloadedTabCount = outcome.reloadedTabCount
+        tabWarning = outcome.warning
     }
 
     // MARK: - Locked Mode（管理者認証あり）

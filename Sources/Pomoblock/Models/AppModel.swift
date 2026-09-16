@@ -73,6 +73,11 @@ final class AppModel {
         engine.skip()
     }
 
+    /// 開いているタブを今すぐ再読み込みする。動作確認用。
+    func refreshOpenTabs() async {
+        await blocker.refreshOpenTabsNow(domains: settings.blockedDomains)
+    }
+
     /// 選択中の時間だけブロックをロックする。
     func lockNow() {
         let expiry = Date().addingTimeInterval(TimeInterval(lockDurationMinutes * 60))

@@ -82,12 +82,18 @@ open dist/Pomoblock.app
 
 対象は Google Chrome / Brave / Microsoft Edge / Safari のうち起動中のもの。初回は macOS の自動化許可を求められる。
 
+起動判定には NSWorkspace を使う。System Events 経由で調べると System Events 自体への自動化許可が要り、
+それが無いと黙って失敗して全ブラウザが読み飛ばされるため。
+
+許可が無くて操作できなかった場合はメニューに警告を出し、`~/Library/Logs/Pomoblock.log` にも記録する。
+
 なお照合はホスト名の完全一致で行う。部分一致では `box.com` が `x.com` に引っかかるため。
 
 ## 制限
 
 - root 権限を持つ以上、`sudo launchctl bootout` で強制解除は可能。これは Cold Turkey など既存アプリも同じで、「面倒にする」ことが目的
 - 自動化の許可を与えない場合、開いたままのタブは手動で再読み込みする必要がある
+- ad-hoc 署名のため、再ビルドすると署名が変わり自動化の許可を求め直される場合がある
 - Firefox は AppleScript に対応していないため、タブの再読み込み対象外
 - 未署名（ad-hoc 署名）のため、通知の許可が通らない環境では音のみで通知する
 

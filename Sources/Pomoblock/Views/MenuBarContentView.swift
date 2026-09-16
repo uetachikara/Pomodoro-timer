@@ -110,38 +110,7 @@ struct MenuBarContentView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            if let remaining = model.blocker.lockRemainingText {
-                Label("ロック中・\(remaining)", systemImage: "lock.shield")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            } else {
-                HStack(spacing: 8) {
-                    Picker("", selection: $model.lockDurationMinutes) {
-                        ForEach(AppConstants.lockDurationChoicesMinutes, id: \.self) { minutes in
-                            Text(label(forMinutes: minutes)).tag(minutes)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 96)
-
-                    Button("ロックする") { model.lockNow() }
-                        .buttonStyle(.bordered)
-                    Spacer()
-                }
-                Text("ロック中はアプリを終了しても再起動してもブロックが続く。")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
         }
-    }
-
-    /// 分数を「1 時間」「30 分」のように整形する。
-    private func label(forMinutes minutes: Int) -> String {
-        let minutesPerHour = 60
-        guard minutes >= minutesPerHour else { return "\(minutes) 分" }
-        let hours = minutes / minutesPerHour
-        let rest = minutes % minutesPerHour
-        return rest == 0 ? "\(hours) 時間" : "\(hours) 時間 \(rest) 分"
     }
 
     // MARK: - 初回セットアップ

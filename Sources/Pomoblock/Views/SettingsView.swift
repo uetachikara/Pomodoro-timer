@@ -74,13 +74,8 @@ private struct BlocklistTab: View {
 
             HStack {
                 Button("選択を削除", action: removeSelected)
-                    .disabled(selection.isEmpty || model.blocker.isLocked)
+                    .disabled(selection.isEmpty)
                 Spacer()
-                if model.blocker.isLocked {
-                    Text("ロック中は現在のリストが適用され続ける")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
             }
         }
         .padding()
@@ -114,7 +109,7 @@ private struct GuardTab: View {
 
             Text("""
             常駐ガードは root 権限の LaunchDaemon として動き、/etc/hosts のブロック領域を管理する。
-            アプリを終了してもブロックの ON/OFF は維持され、Locked Mode 中は期限まで解除できない。
+            遮断するのはポモドーロの作業フェーズ中だけで、休憩と待機中は自動で解除する。
             """)
             .font(.callout)
             .foregroundStyle(.secondary)
@@ -123,18 +118,11 @@ private struct GuardTab: View {
             HStack {
                 if model.blocker.isGuardInstalled {
                     Button("撤去する") { model.blocker.uninstallGuard() }
-                        .disabled(model.blocker.isLocked)
                 } else {
                     Button("導入する") { model.blocker.installGuard() }
                         .buttonStyle(.borderedProminent)
                 }
                 Button("状態を再読み込み") { model.blocker.refresh() }
-            }
-
-            if model.blocker.isLocked, let remaining = model.blocker.lockRemainingText {
-                Label("ロック中のため撤去できない（\(remaining)）", systemImage: "lock.shield")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
             }
 
             if let status = model.blocker.lastStatus {

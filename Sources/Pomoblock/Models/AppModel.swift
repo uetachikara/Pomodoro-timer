@@ -13,9 +13,6 @@ final class AppModel {
     let engine: PomodoroEngine
     let blocker: BlockController
 
-    /// ロック時間の選択値（分）
-    var lockDurationMinutes = AppConstants.defaultLockDurationMinutes
-
     init() {
         let settings = AppSettings()
         self.settings = settings
@@ -78,11 +75,6 @@ final class AppModel {
         await blocker.refreshOpenTabsNow(domains: settings.blockedDomains)
     }
 
-    /// 選択中の時間だけブロックをロックする。
-    func lockNow() {
-        let expiry = Date().addingTimeInterval(TimeInterval(lockDurationMinutes * 60))
-        blocker.lock(until: expiry, domains: settings.blockedDomains)
-    }
 
     // MARK: - 通知
 

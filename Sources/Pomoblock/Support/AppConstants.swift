@@ -36,14 +36,6 @@ enum AppConstants {
     /// ガードが hosts へ反映し終える猶予を取る。
     static let tabRefreshDelaySeconds = 2.0
 
-    // MARK: - Locked Mode
-
-    /// ロック時間の選択肢（分）
-    static let lockDurationChoicesMinutes = [30, 60, 90, 120, 180, 240]
-
-    /// ロック時間の既定値（分）
-    static let defaultLockDurationMinutes = 60
-
     // MARK: - ファイル配置
 
     /// ガードが書き換える hosts ファイル
@@ -55,8 +47,8 @@ enum AppConstants {
     /// アプリ側が書き込む「ブロックしたい状態」。所有者はインストールしたユーザー。
     static let desiredStatePath = sharedDirectory + "/desired.conf"
 
-    /// ロック状態を保持するファイル。root 所有なのでアプリ単体では書き換えられない。
-    static let lockStatePath = sharedDirectory + "/lock.conf"
+    /// 旧 Locked Mode が残した可能性のあるファイル。導入時に消すためだけに参照する。
+    static let obsoleteLockStatePath = sharedDirectory + "/lock.conf"
 
     /// 常駐ガード本体の設置先
     static let guardScriptPath = "/usr/local/libexec/pomoblock-guard.sh"

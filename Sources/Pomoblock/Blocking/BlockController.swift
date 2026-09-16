@@ -15,9 +15,6 @@ final class BlockController {
     /// 現在ブロック中か（アプリが要求している状態）
     private(set) var isBlocking = false
 
-    /// Locked Mode の期限。nil ならロックされていない。
-    private(set) var lockedUntil: Date?
-
     /// 直近のエラー。UI に表示する。
     var lastError: String?
 
@@ -36,43 +33,13 @@ final class BlockController {
         refresh()
     }
 
-    /// ロック中か
-    var isLocked: Bool {
-        guard let lockedUntil else { return false }
-        return lockedUntil > Date()
-    }
-
-    /// ロック残り時間の表示文字列
-    var lockRemainingText: String? {
-        guard let lockedUntil, lockedUntil > Date() else { return nil }
-        let seconds = Int(lockedUntil.timeIntervalSinceNow)
-        let hours = seconds / 3600
-        let minutes = (seconds % 3600) / 60
-        return hours > 0 ? "残り \(hours) 時間 \(minutes) 分" : "残り \(minutes) 分"
-    }
-
     // MARK: - 状態の読み直し
 
     /// ディスク上の状態を読み直す。
     func refresh() {
         isGuardInstalled = fileManager.fileExists(atPath: AppConstants.guardPlistPath)
             && fileManager.fileExists(atPath: AppConstants.guardScriptPath)
-        lockedUntil = readLockExpiry()
         isBlocking = readDesiredBlocking()
-    }
-
-    /// lock.conf から期限を読む。
-    private func readLockExpiry() -> Date? {
-        guard let content = try? String(contentsOfFile: AppConstants.lockStatePath, encoding: .utf8) else {
-            return nil
-        }
-        for line in content.split(separator: "\n") where line.hasPrefix("locked_until=") {
-            let raw = line.dropFirst("locked_until=".count)
-            guard let epoch = TimeInterval(raw) else { return nil }
-            let date = Date(timeIntervalSince1970: epoch)
-            return date > Date() ? date : nil
-        }
-        return nil
     }
 
     /// desired.conf から現在の要求状態を読む。
@@ -130,33 +97,6 @@ final class BlockController {
         tabWarning = outcome.warning
     }
 
-    // MARK: - Locked Mode（管理者認証あり）
-
-    /// 指定時刻までブロックを解除不能にする。
-    func lock(until expiry: Date, domains: [String]) {
-        guard isGuardInstalled else {
-            lastError = "先に常駐ガードを導入してください。"
-            return
-        }
-
-        var lines = ["locked_until=\(Int(expiry.timeIntervalSince1970))"]
-        lines.append(contentsOf: domains)
-        let body = lines.joined(separator: "\n") + "\n"
-
-        // root 所有で書き込む。ユーザー権限では書き換えられないことがロックの根拠になる。
-        let script = """
-        umask 022
-        cat > \(PrivilegedRunner.shellQuote(AppConstants.lockStatePath)) <<'POMOBLOCK_LOCK_EOF'
-        \(body)POMOBLOCK_LOCK_EOF
-        chown root:wheel \(PrivilegedRunner.shellQuote(AppConstants.lockStatePath))
-        chmod 644 \(PrivilegedRunner.shellQuote(AppConstants.lockStatePath))
-        launchctl kickstart -k system/\(AppConstants.guardLabel)
-        """
-
-        run(script, onSuccess: "ロックを設定しました。")
-        refreshOpenTabsAfterGuardApplies(domains: domains)
-    }
-
     // MARK: - 常駐ガードの導入と撤去
 
     /// 常駐ガードを導入する。管理者認証が一度だけ必要。
@@ -177,6 +117,7 @@ final class BlockController {
         chmod 755 \(PrivilegedRunner.shellQuote(AppConstants.sharedDirectory))
         install -m 755 -o root -g wheel \(PrivilegedRunner.shellQuote(scriptURL.path)) \(PrivilegedRunner.shellQuote(AppConstants.guardScriptPath))
         install -m 644 -o root -g wheel \(PrivilegedRunner.shellQuote(plistURL.path)) \(PrivilegedRunner.shellQuote(AppConstants.guardPlistPath))
+        rm -f \(PrivilegedRunner.shellQuote(AppConstants.obsoleteLockStatePath))
         touch \(PrivilegedRunner.shellQuote(AppConstants.desiredStatePath))
         chown \(PrivilegedRunner.shellQuote(currentUser)) \(PrivilegedRunner.shellQuote(AppConstants.desiredStatePath))
         chmod 644 \(PrivilegedRunner.shellQuote(AppConstants.desiredStatePath))
@@ -187,18 +128,13 @@ final class BlockController {
         run(script, onSuccess: "常駐ガードを導入しました。")
     }
 
-    /// 常駐ガードを撤去し、hosts を元に戻す。ロック中は実行できない。
+    /// 常駐ガードを撤去し、hosts を元に戻す。
     func uninstallGuard() {
-        guard !isLocked else {
-            lastError = "ロック中は撤去できません。期限まで待ってください。"
-            return
-        }
-
         let script = """
         launchctl bootout system/\(AppConstants.guardLabel) 2>/dev/null || true
         rm -f \(PrivilegedRunner.shellQuote(AppConstants.guardPlistPath))
         rm -f \(PrivilegedRunner.shellQuote(AppConstants.guardScriptPath))
-        rm -f \(PrivilegedRunner.shellQuote(AppConstants.lockStatePath))
+        rm -f \(PrivilegedRunner.shellQuote(AppConstants.obsoleteLockStatePath))
         rm -f \(PrivilegedRunner.shellQuote(AppConstants.desiredStatePath))
         tmp=$(mktemp /tmp/pomoblock.XXXXXX)
         sed '/^# >>> pomoblock begin >>>$/,/^# <<< pomoblock end <<<$/d' \(AppConstants.hostsPath) > "$tmp"

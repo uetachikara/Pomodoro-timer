@@ -74,6 +74,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <!-- 遮断開始時に、開いたままのタブを再読み込みするために必要 -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>ブロック開始時に、対象サイトを開いているタブを再読み込みします。</string>
 </dict>
 </plist>
 PLIST

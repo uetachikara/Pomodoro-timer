@@ -21,7 +21,16 @@ final class BlockController {
     /// 直近の成功メッセージ。UI に表示する。
     var lastStatus: String?
 
+    /// タブ再読み込みの警告。自動化の許可が無い場合などに入る。
+    var tabWarning: String?
+
+    /// 直近に再読み込みしたタブ数。動作確認用。
+    private(set) var lastReloadedTabCount = 0
+
     private let fileManager = FileManager.default
+
+    /// 遮断中にタブを見張る処理。解除時に止める。
+    private var tabWatchTask: Task<Void, Never>?
 
     init() {
         refresh()
@@ -61,12 +70,50 @@ final class BlockController {
             // launchd の WatchPaths を確実に発火させるため、inode を保つ非アトミック書き込みにする
             try body.write(toFile: AppConstants.desiredStatePath, atomically: false, encoding: .utf8)
             isBlocking = blocked
+            if blocked {
+                startTabWatch(domains: domains)
+            } else {
+                stopTabWatch()
+            }
         } catch {
             lastError = "ブロック状態の書き込みに失敗しました: \(error.localizedDescription)"
         }
     }
 
+    /// 遮断中、対象サイトのタブを見張って退避させ続ける。
+    ///
+    /// hosts は読み込み済みのページに効かず、さらに X のように
+    /// Service Worker を持つサイトは新規アクセスもキャッシュから返るため、
+    /// 遮断開始時に一度退避させるだけでは戻られてしまう。
+    /// そのため遮断が続く間は一定間隔で確認し続ける。
+    private func startTabWatch(domains: [String]) {
+        stopTabWatch()
+        tabWatchTask = Task { [weak self] in
+            // 初回はガードが hosts へ反映し終える猶予を取る
+            try? await Task.sleep(for: .seconds(AppConstants.tabRefreshDelaySeconds))
+            while !Task.isCancelled {
+                await self?.refreshOpenTabsNow(domains: domains)
+                try? await Task.sleep(for: .seconds(AppConstants.tabWatchIntervalSeconds))
+            }
+        }
+    }
 
+    /// 監視を止める。休憩へ移った時とアプリ終了時に呼ぶ。
+    private func stopTabWatch() {
+        tabWatchTask?.cancel()
+        tabWatchTask = nil
+    }
+
+    /// 待たずに即座にタブを再読み込みする。動作確認用に UI からも呼べる。
+    func refreshOpenTabsNow(domains: [String]) async {
+        // AppleScript の往復で UI を止めないよう、メインアクターの外で実行する
+        let outcome = await Task.detached(priority: .utility) {
+            BrowserTabRefresher.refreshTabs(matching: domains)
+        }.value
+
+        lastReloadedTabCount = outcome.reloadedTabCount
+        tabWarning = outcome.warning
+    }
 
     // MARK: - 常駐ガードの導入と撤去
 

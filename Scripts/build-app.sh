@@ -8,6 +8,7 @@ set -euo pipefail
 APP_NAME="Pomoblock"
 BUNDLE_ID="jp.havas.pomoblock"
 GUARD_LABEL="jp.havas.pomoblock.guard"
+AGENT_LABEL="jp.havas.pomoblock.agent"
 # macOS の最低要件。MenuBarExtra の window スタイルに必要。
 MINIMUM_SYSTEM_VERSION="14.0"
 
@@ -25,6 +26,16 @@ BINARY_PATH="$(swift build -c release --show-bin-path)/$APP_NAME"
 if [ ! -f "$BINARY_PATH" ]; then
     echo "実行ファイルが見つからない: $BINARY_PATH" >&2
     exit 1
+fi
+
+# 自動起動が登録されていると KeepAlive が再起動を繰り返し、
+# 差し替え中のバンドルを掴んでしまう。一旦止めて最後に入れ直す。
+AGENT_PLIST="$HOME/Library/LaunchAgents/$AGENT_LABEL.plist"
+AGENT_WAS_LOADED=0
+if [ -f "$AGENT_PLIST" ]; then
+    echo "==> 自動起動を一時停止"
+    launchctl bootout "gui/$(id -u)/$AGENT_LABEL" 2>/dev/null || true
+    AGENT_WAS_LOADED=1
 fi
 
 echo "==> .app バンドルを組み立て"
@@ -73,5 +84,10 @@ PLIST
 # ad-hoc 署名。通知の許可要求や launchd との連携を安定させるため。
 echo "==> ad-hoc 署名"
 codesign --force --sign - --timestamp=none "$APP_DIR"
+
+if [ "$AGENT_WAS_LOADED" -eq 1 ]; then
+    echo "==> 自動起動を再開"
+    launchctl bootstrap "gui/$(id -u)" "$AGENT_PLIST" 2>/dev/null || true
+fi
 
 echo "==> 完成: $APP_DIR"

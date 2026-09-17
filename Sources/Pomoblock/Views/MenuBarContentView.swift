@@ -139,8 +139,13 @@ struct MenuBarContentView: View {
 
             Spacer()
 
-            Button("終了") { NSApplication.shared.terminate(nil) }
-                .buttonStyle(.link)
+            Button(model.loginItem.isEnabled ? "終了（自動復帰）" : "終了") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.link)
+            .help(model.loginItem.isEnabled
+                ? "自動起動が有効なため、終了しても数秒で起動し直します。"
+                : "アプリを終了します。")
         }
         .font(.callout)
     }

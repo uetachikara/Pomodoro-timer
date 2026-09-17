@@ -11,6 +11,12 @@ enum AppConstants {
     /// 常駐ガード（LaunchDaemon）のラベル。
     static let guardLabel = "jp.havas.pomoblock.guard"
 
+    /// 自動起動（LaunchAgent）のラベル。
+    static let loginAgentLabel = "jp.havas.pomoblock.agent"
+
+    /// 実行ファイル名。バンドル内のパス組み立てに使う。
+    static let executableName = "Pomoblock"
+
     // MARK: - ポモドーロ既定値（単位:秒）
 
     /// 作業フェーズの既定の長さ

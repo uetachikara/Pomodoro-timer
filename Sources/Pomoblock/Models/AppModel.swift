@@ -12,12 +12,14 @@ final class AppModel {
     let settings: AppSettings
     let engine: PomodoroEngine
     let blocker: BlockController
+    let loginItem: LoginItemController
 
     init() {
         let settings = AppSettings()
         self.settings = settings
         self.engine = PomodoroEngine(settings: settings)
         self.blocker = BlockController()
+        self.loginItem = LoginItemController()
 
         engine.onPhaseChanged = { [weak self] phase in
             self?.handlePhaseChange(phase)

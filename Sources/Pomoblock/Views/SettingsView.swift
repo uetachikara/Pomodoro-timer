@@ -14,6 +14,9 @@ struct SettingsView: View {
 
             GuardTab(model: model)
                 .tabItem { Label("常駐ガード", systemImage: "shield") }
+
+            StartupTab(model: model)
+                .tabItem { Label("起動", systemImage: "power") }
         }
         .frame(width: 440, height: 380)
     }
@@ -136,6 +139,51 @@ private struct GuardTab: View {
                     .foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            Spacer()
+        }
+        .padding()
+    }
+}
+
+/// ログイン時の自動起動と常駐の設定。
+private struct StartupTab: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Toggle("ログイン時に自動起動する", isOn: Binding(
+                get: { model.loginItem.isEnabled },
+                set: { model.loginItem.setEnabled($0) }
+            ))
+            .toggleStyle(.switch)
+
+            Text("""
+            LaunchAgent として登録する。管理者パスワードは要らない。
+            終了されても launchd が起動し直すため、メニューの「終了」を押しても数秒で戻る。
+            完全に止めたいときは、このスイッチを切ってから終了する。
+            """)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            if model.loginItem.isEnabled {
+                Label("有効。ログイン時に起動し、終了しても復帰する。", systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+
+            if let error = model.loginItem.lastError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Text("アプリを別の場所へ移動した場合は、スイッチを切って入れ直す。登録時のパスを指すため。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer()
         }

@@ -97,7 +97,10 @@ enum BrowserTabRefresher {
             outcome.reloadedTabCount += matched.count
         }
 
-        log(outcome)
+        // 監視は数秒ごとに走るため、退避が起きた時と失敗した時だけ記録する
+        if outcome.reloadedTabCount > 0 || !outcome.failedBrowsers.isEmpty {
+            log(outcome)
+        }
         return outcome
     }
 

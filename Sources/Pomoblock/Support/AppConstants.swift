@@ -42,6 +42,11 @@ enum AppConstants {
     /// ガードが hosts へ反映し終える猶予を取る。
     static let tabRefreshDelaySeconds = 2.0
 
+    /// 遮断中にタブを見張る間隔（秒）。
+    /// Service Worker を持つサイトは hosts を素通りするため、
+    /// 一度退避させるだけでは戻られてしまう。遮断中は監視を続ける。
+    static let tabWatchIntervalSeconds = 3.0
+
     /// 遮断したタブの退避先として表示するページのファイル名
     static let blockedPageFileName = "blocked.html"
 

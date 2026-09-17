@@ -29,6 +29,9 @@ final class BlockController {
 
     private let fileManager = FileManager.default
 
+    /// 遮断中にタブを見張る処理。解除時に止める。
+    private var tabWatchTask: Task<Void, Never>?
+
     init() {
         refresh()
     }
@@ -68,22 +71,37 @@ final class BlockController {
             try body.write(toFile: AppConstants.desiredStatePath, atomically: false, encoding: .utf8)
             isBlocking = blocked
             if blocked {
-                refreshOpenTabsAfterGuardApplies(domains: domains)
+                startTabWatch(domains: domains)
+            } else {
+                stopTabWatch()
             }
         } catch {
             lastError = "ブロック状態の書き込みに失敗しました: \(error.localizedDescription)"
         }
     }
 
-    /// 開いたままのタブへ遮断を波及させる。
+    /// 遮断中、対象サイトのタブを見張って退避させ続ける。
     ///
-    /// hosts を書き換えても読み込み済みのページは動き続けるため、
-    /// ガードが反映を終えるのを待ってから対象タブを再読み込みする。
-    private func refreshOpenTabsAfterGuardApplies(domains: [String]) {
-        Task {
+    /// hosts は読み込み済みのページに効かず、さらに X のように
+    /// Service Worker を持つサイトは新規アクセスもキャッシュから返るため、
+    /// 遮断開始時に一度退避させるだけでは戻られてしまう。
+    /// そのため遮断が続く間は一定間隔で確認し続ける。
+    private func startTabWatch(domains: [String]) {
+        stopTabWatch()
+        tabWatchTask = Task { [weak self] in
+            // 初回はガードが hosts へ反映し終える猶予を取る
             try? await Task.sleep(for: .seconds(AppConstants.tabRefreshDelaySeconds))
-            await refreshOpenTabsNow(domains: domains)
+            while !Task.isCancelled {
+                await self?.refreshOpenTabsNow(domains: domains)
+                try? await Task.sleep(for: .seconds(AppConstants.tabWatchIntervalSeconds))
+            }
         }
+    }
+
+    /// 監視を止める。休憩へ移った時とアプリ終了時に呼ぶ。
+    private func stopTabWatch() {
+        tabWatchTask?.cancel()
+        tabWatchTask = nil
     }
 
     /// 待たずに即座にタブを再読み込みする。動作確認用に UI からも呼べる。

@@ -33,7 +33,7 @@ open dist/Pomoblock.app
 | 設置先 | 役割 |
 |---|---|
 | `/usr/local/libexec/pomoblock-guard.sh` | hosts を書き換える本体（root 実行） |
-| `/Library/LaunchDaemons/jp.havas.pomoblock.guard.plist` | ガードの起動定義 |
+| `/Library/LaunchDaemons/jp.chikaraueta.pomoblock.guard.plist` | ガードの起動定義 |
 | `/Library/Application Support/Pomoblock/desired.conf` | アプリが書くブロック要求（ユーザー所有） |
 
 導入後は、ブロックの ON/OFF でパスワードを求めない。
@@ -57,7 +57,7 @@ open dist/Pomoblock.app
 
 ### 常時起動の仕組み
 
-設定の「起動」タブで有効にすると、`~/Library/LaunchAgents/jp.havas.pomoblock.agent.plist` を書いて
+設定の「起動」タブで有効にすると、`~/Library/LaunchAgents/jp.chikaraueta.pomoblock.agent.plist` を書いて
 `launchctl bootstrap` する。ユーザー領域の LaunchAgent なので管理者パスワードは要らない。
 
 `RunAtLoad` でログイン時に起動し、`KeepAlive` で終了されても起動し直す。
@@ -117,5 +117,5 @@ Sources/Pomoblock/
 
 Resources/
 ├── pomoblock-guard.sh                 # 常駐ガード本体
-└── jp.havas.pomoblock.guard.plist     # LaunchDaemon 定義
+└── jp.chikaraueta.pomoblock.guard.plist     # LaunchDaemon 定義
 ```

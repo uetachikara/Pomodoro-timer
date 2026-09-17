@@ -6,13 +6,13 @@ enum AppConstants {
     // MARK: - 識別子
 
     /// バンドル識別子。ビルドスクリプトが生成する Info.plist と一致させること。
-    static let bundleIdentifier = "jp.havas.pomoblock"
+    static let bundleIdentifier = "jp.chikaraueta.pomoblock"
 
     /// 常駐ガード（LaunchDaemon）のラベル。
-    static let guardLabel = "jp.havas.pomoblock.guard"
+    static let guardLabel = "jp.chikaraueta.pomoblock.guard"
 
     /// 自動起動（LaunchAgent）のラベル。
-    static let loginAgentLabel = "jp.havas.pomoblock.agent"
+    static let loginAgentLabel = "jp.chikaraueta.pomoblock.agent"
 
     /// 実行ファイル名。バンドル内のパス組み立てに使う。
     static let executableName = "Pomoblock"
@@ -68,7 +68,7 @@ enum AppConstants {
     static let guardScriptPath = "/usr/local/libexec/pomoblock-guard.sh"
 
     /// LaunchDaemon の plist 設置先
-    static let guardPlistPath = "/Library/LaunchDaemons/jp.havas.pomoblock.guard.plist"
+    static let guardPlistPath = "/Library/LaunchDaemons/jp.chikaraueta.pomoblock.guard.plist"
 
     // MARK: - 既定のブロック対象
 

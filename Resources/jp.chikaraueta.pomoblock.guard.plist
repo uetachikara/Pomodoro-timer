@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>jp.havas.pomoblock.guard</string>
+    <string>jp.chikaraueta.pomoblock.guard</string>
 
     <key>ProgramArguments</key>
     <array>

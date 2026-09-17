@@ -6,9 +6,9 @@
 set -euo pipefail
 
 APP_NAME="Pomoblock"
-BUNDLE_ID="jp.havas.pomoblock"
-GUARD_LABEL="jp.havas.pomoblock.guard"
-AGENT_LABEL="jp.havas.pomoblock.agent"
+BUNDLE_ID="jp.chikaraueta.pomoblock"
+GUARD_LABEL="jp.chikaraueta.pomoblock.guard"
+AGENT_LABEL="jp.chikaraueta.pomoblock.agent"
 # macOS の最低要件。MenuBarExtra の window スタイルに必要。
 MINIMUM_SYSTEM_VERSION="14.0"
 

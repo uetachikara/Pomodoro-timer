@@ -104,7 +104,7 @@ struct MenuBarContentView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Button("開いているタブを今すぐ再読み込み") {
+            Button("開いているタブを今すぐ退避") {
                 Task { await model.refreshOpenTabs() }
             }
             .buttonStyle(.bordered)

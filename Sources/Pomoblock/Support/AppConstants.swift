@@ -38,9 +38,12 @@ enum AppConstants {
     /// 残り時間表示を更新する間隔（秒）
     static let tickInterval: TimeInterval = 1.0
 
-    /// ブロック開始からタブを再読み込みするまでの待ち時間（秒）。
+    /// ブロック開始からタブを退避させるまでの待ち時間（秒）。
     /// ガードが hosts へ反映し終える猶予を取る。
     static let tabRefreshDelaySeconds = 2.0
+
+    /// 遮断したタブの退避先として表示するページのファイル名
+    static let blockedPageFileName = "blocked.html"
 
     // MARK: - ファイル配置
 

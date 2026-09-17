@@ -5,11 +5,13 @@ import Foundation
 ///
 /// /etc/hosts はこれから行う名前解決を止めるだけで、
 /// 読み込み済みのページや確立済みの接続には効かない。
-/// そのため遮断を開始した時点で、対象ドメインのタブを再読み込みして
-/// ブロック済みの状態（接続エラー）へ落とす。
 ///
-/// タブを閉じるのではなく再読み込みにしているのは、URL を残して
-/// 解除後に戻れるようにするため。
+/// 当初は対象タブを再読み込みしていたが、それでは足りなかった。
+/// X のような PWA は Service Worker がアプリシェルをキャッシュから返すため、
+/// 再読み込みしてもネットワークに出ず画面が出続ける。
+///
+/// そこでタブごとローカルの退避ページへ飛ばす。
+/// 元の URL はそのページに表示するので、解除後に戻れる。
 enum BrowserTabRefresher {
 
     /// 対応ブラウザ。AppleScript の語彙が異なるため系統で分けている。
@@ -46,8 +48,14 @@ enum BrowserTabRefresher {
         /// AppleScript が失敗したブラウザ名。自動化の許可が無い場合にここへ入る。
         var failedBrowsers: [String] = []
 
+        /// 退避ページを設置できなかったか
+        var pageInstallFailed = false
+
         /// UI に出す一行の要約。問題が無ければ nil。
         var warning: String? {
+            if pageInstallFailed {
+                return "ブロック用ページを設置できませんでした。開いているタブは手動で閉じてください。"
+            }
             if !failedBrowsers.isEmpty {
                 return "\(failedBrowsers.joined(separator: " / ")) のタブを操作できません。システム設定 > プライバシーとセキュリティ > 自動化 で Pomoblock を許可してください。"
             }
@@ -55,13 +63,20 @@ enum BrowserTabRefresher {
         }
     }
 
-    /// ブロック対象ドメインのタブを再読み込みする。
+    /// ブロック対象ドメインのタブを退避ページへ飛ばす。
     /// - Parameter domains: 遮断中のドメイン
     /// - Returns: 実行結果
     @discardableResult
     static func refreshTabs(matching domains: [String]) -> Outcome {
         var outcome = Outcome()
         guard !domains.isEmpty else { return outcome }
+
+        guard let pageURL = BlockedPage.ensureInstalled() else {
+            outcome.pageInstallFailed = true
+            log(outcome)
+            return outcome
+        }
+
         let targets = Set(domains.map { $0.lowercased() })
 
         for browser in browsers {
@@ -75,9 +90,10 @@ enum BrowserTabRefresher {
                 continue
             }
 
+            // 退避ページ自身は対象外。二重に飛ばさないため。
             let matched = tabs.filter { matches(url: $0.url, targets: targets) }
             guard !matched.isEmpty else { continue }
-            reload(matched, in: browser)
+            divert(matched, in: browser, to: pageURL)
             outcome.reloadedTabCount += matched.count
         }
 
@@ -89,7 +105,7 @@ enum BrowserTabRefresher {
     private static func log(_ outcome: Outcome) {
         let line = "[\(ISO8601DateFormatter().string(from: Date()))] "
             + "起動中=\(outcome.runningBrowsers.joined(separator: ",")) "
-            + "再読み込み=\(outcome.reloadedTabCount) "
+            + "退避=\(outcome.reloadedTabCount) "
             + "失敗=\(outcome.failedBrowsers.joined(separator: ","))\n"
 
         let logURL = FileManager.default.homeDirectoryForCurrentUser
@@ -152,20 +168,16 @@ enum BrowserTabRefresher {
         }
     }
 
-    // MARK: - 再読み込み
+    // MARK: - 退避
 
-    /// 該当タブを再読み込みする。
-    private static func reload(_ tabs: [TabReference], in browser: Browser) {
+    /// 該当タブを退避ページへ飛ばす。
+    /// - Parameter pageURL: 退避先のローカルページ
+    private static func divert(_ tabs: [TabReference], in browser: Browser, to pageURL: URL) {
         // タブ指定の文が長くなるため、1 本のスクリプトにまとめて往復を減らす
         let statements = tabs.map { tab in
-            switch browser {
-            case .chromium:
-                // Chromium 系は reload コマンドを持つ
-                "    try\n        reload tab \(tab.tabIndex) of window \(tab.windowIndex)\n    end try"
-            case .safari:
-                // Safari には reload が無いため、同じ URL を設定し直して読み込ませる
-                "    try\n        set URL of tab \(tab.tabIndex) of window \(tab.windowIndex) to (URL of tab \(tab.tabIndex) of window \(tab.windowIndex))\n    end try"
-            }
+            let destination = BlockedPage.destination(for: tab.url, pageURL: pageURL)
+            // Chromium 系も Safari も URL の代入で遷移できる
+            return "    try\n        set URL of tab \(tab.tabIndex) of window \(tab.windowIndex) to \"\(destination)\"\n    end try"
         }
 
         let script = """

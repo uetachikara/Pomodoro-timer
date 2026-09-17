@@ -95,21 +95,6 @@ struct MenuBarContentView: View {
                     .foregroundStyle(.secondary)
             }
 
-            // 自動化が許可されていない等でタブを操作できない場合に知らせる。
-            // これを出さないと「ブロック中なのに見えている」原因が分からない。
-            if let warning = model.blocker.tabWarning {
-                Label(warning, systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            Button("開いているタブを今すぐ退避") {
-                Task { await model.refreshOpenTabs() }
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.small)
-
         }
     }
 
